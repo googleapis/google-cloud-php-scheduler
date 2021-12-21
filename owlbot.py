@@ -14,33 +14,25 @@
 
 """This script is used to synthesize generated parts of this library."""
 
-import synthtool as s
-import synthtool.gcp as gcp
 import logging
+from pathlib import Path
+import subprocess
+
+import synthtool as s
+from synthtool.languages import php
+from synthtool import _tracked_paths
 
 logging.basicConfig(level=logging.DEBUG)
 
-gapic = gcp.GAPICBazel()
-common = gcp.CommonTemplates()
+src = Path(f"../{php.STAGING_DIR}/Scheduler").resolve()
+dest = Path().resolve()
 
-for version in ['V1', 'V1beta1']:
-    lower_version = version.lower()
+# Added so that we can pass copy_excludes in the owlbot_main() call
+_tracked_paths.add(src)
 
-    library = gapic.php_library(
-        service='scheduler',
-        version=lower_version,
-        bazel_target=f'//google/cloud/scheduler/{lower_version}:google-cloud-scheduler-{lower_version}-php',
-    )
+php.owlbot_main(src=src, dest=dest)
 
-    # copy all src
-    s.move(library / f'src/{version}')
 
-    # copy proto files to src also
-    s.move(library / f'proto/src/Google/Cloud/Scheduler', f'src/')
-    s.move(library / f'tests/')
-
-    # copy GPBMetadata file to metadata
-    s.move(library / f'proto/src/GPBMetadata/Google/Cloud/Scheduler', f'metadata/')
 
 # document and utilize apiEndpoint instead of serviceAddress
 s.replace(
@@ -59,16 +51,6 @@ s.replace(
     "**/Gapic/*GapicClient.php",
     r"\$transportConfig, and any \$serviceAddress",
     r"$transportConfig, and any `$apiEndpoint`")
-
-# fix year
-s.replace(
-    'src/**/**/*.php',
-    r'Copyright \d{4}',
-    r'Copyright 2019')
-s.replace(
-    'tests/**/**/*Test.php',
-    r'Copyright \d{4}',
-    r'Copyright 2019')
 
 # V1 is GA, so remove @experimental tags
 s.replace(
